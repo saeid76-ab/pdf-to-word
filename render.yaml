@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: pdf-to-word
+    env: python
+    buildCommand: |
+      apt-get update
+      apt-get install -y tesseract-ocr tesseract-ocr-fas tesseract-ocr-eng
+      pip install -r requirements.txt
+    startCommand: gunicorn app:app
