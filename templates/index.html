@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تبدیل PDF به Word</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Tahoma', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 { text-align: center; color: #333; margin-bottom: 10px; }
+        .subtitle { text-align: center; color: #666; margin-bottom: 30px; font-size: 14px; }
+        .upload-box {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+        .upload-box:hover { background: #f0f4ff; }
+        .upload-icon { font-size: 48px; margin-bottom: 15px; }
+        input[type="file"] { display: none; }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .progress { margin-top: 20px; display: none; }
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        .status { margin-top: 10px; text-align: center; color: #666; }
+        .error {
+            background: #ffe6e6;
+            color: #cc0000;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+        .file-info {
+            background: #f0f4ff;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📄 تبدیل PDF به Word</h1>
+        <p class="subtitle">پردازش حرفه‌ای با OCR - پشتیبانی از فارسی و انگلیسی</p>
+        
+        <div class="upload-box" id="dropZone">
+            <div class="upload-icon">📁</div>
+            <div>فایل PDF خود را اینجا بکشید یا کلیک کنید</div>
+            <input type="file" id="fileInput" accept=".pdf">
+        </div>
+        
+        <div class="file-info" id="fileInfo">
+            <strong>فایل:</strong> <span id="fileName"></span>
+        </div>
+        
+        <button class="btn" id="convertBtn" onclick="convertPDF()" disabled>
+            🚀 شروع تبدیل
+        </button>
+        
+        <div class="progress" id="progress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill">0%</div>
+            </div>
+            <div class="status" id="status">در انتظار...</div>
+        </div>
+        
+        <div class="error" id="error"></div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const convertBtn = document.getElementById('convertBtn');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const progress = document.getElementById('progress');
+        const progressFill = document.getElementById('progressFill');
+        const status = document.getElementById('status');
+        const error = document.getElementById('error');
+        let selectedFile = null;
+        
+        dropZone.addEventListener('click', () => fileInput.click());
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.background = '#e8eeff';
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.style.background = '';
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.background = '';
+            const files = e.dataTransfer.files;
+            if (files.length && files[0].type === 'application/pdf') {
+                handleFile(files[0]);
+            } else {
+                showError('لطفاً فقط فایل PDF انتخاب کنید.');
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) handleFile(e.target.files[0]);
+        });
+        
+        function handleFile(file) {
+            selectedFile = file;
+            const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+            fileName.textContent = `${file.name} (${sizeMB} MB)`;
+            fileInfo.style.display = 'block';
+            convertBtn.disabled = false;
+            error.style.display = 'none';
+        }
+        
+        async function convertPDF() {
+            if (!selectedFile) return;
+            convertBtn.disabled = true;
+            convertBtn.innerHTML = 'در حال پردازش...';
+            progress.style.display = 'block';
+            error.style.display = 'none';
+            
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('lang', 'eng+fas');
+            
+            try {
+                status.textContent = '📤 در حال آپلود...';
+                progressFill.style.width = '30%';
+                progressFill.textContent = '30%';
+                
+                const response = await fetch('/convert', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.error || 'خطا در پردازش');
+                }
+                
+                status.textContent = '🔍 در حال پردازش OCR...';
+                progressFill.style.width = '70%';
+                progressFill.textContent = '70%';
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = selectedFile.name.replace('.pdf', '.docx');
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+                progressFill.style.width = '100%';
+                progressFill.textContent = '100%';
+                status.textContent = '✅ تبدیل با موفقیت انجام شد!';
+            } catch (err) {
+                showError(err.message);
+                status.textContent = '❌ خطا';
+                progressFill.style.width = '0%';
+            } finally {
+                convertBtn.disabled = false;
+                convertBtn.innerHTML = '🚀 شروع تبدیل';
+            }
+        }
+        
+        function showError(msg) {
+            error.textContent = '❌ ' + msg;
+            error.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
